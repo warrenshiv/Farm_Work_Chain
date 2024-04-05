@@ -1,3 +1,10 @@
+# 🌱 Farm Work Chain Documentation
+
+## Overview
+
+This documentation provides a comprehensive overview of a smart contract designed for the agriculture sector, enabling interactions between farmers and workers through profiles, job offers, employment contracts, and job payments.
+
+
 ## Things to be explained in the course:
 1. What is Ledger? More details here: https://internetcomputer.org/docs/current/developer-docs/integrations/ledger/
 2. What is Internet Identity? More details here: https://internetcomputer.org/internet-identity
