@@ -1,36 +1,33 @@
-import { auto } from "@popperjs/core";
-import { query, update, text, Record, StableBTreeMap, Variant, Vec, None, Some, Ok, Err, ic, Principal, Opt, nat64, Duration, Result, bool, Canister } from "azle";
-import {
-    Ledger, binaryAddressFromAddress, binaryAddressFromPrincipal, hexAddressFromPrincipal
-} from "azle/canisters/ledger";
-import { hashCode } from "hashcode";
+Copy code
+import { Principal, nat64, text, Option, Result, Variant, Vec, Duration, StableBTreeMap, None, Some, update, query, Canister } from "azle";
+import { Ledger, hexAddressFromPrincipal } from "azle/canisters/ledger";
 import { v4 as uuidv4 } from "uuid";
 
+// Define record types for data models
 const EmploymentContract = Record({
     contractId: text,
     farmerId: text,
-    jobOfferId : text,
-    workerId: Opt(text),
+    jobOfferId: text,
+    workerId: Option(text),
     jobDescription: text,
     jobTerms: text,
     wages: nat64,
     duration: text,
-    status:text
+    status: text
 });
 
 const WorkerProfile = Record({
     workerId: text,
     owner: Principal,
-    skills:Vec(text),
+    skills: Vec(text),
     name: text,
-    contactNo : text,
+    contactNo: text,
     address: text,
     experience: text,
     references: Vec(text),
-    earnedPoints : nat64,
+    earnedPoints: nat64,
     verified: bool
 });
-
 
 const JobOffer = Record({
     jobOfferId: text,
@@ -41,49 +38,15 @@ const JobOffer = Record({
     status: text
 });
 
-
-
 const FarmerProfile = Record({
     farmerId: text,
     name: text,
-    contactNo : text,
-    owner:Principal,
+    contactNo: text,
+    owner: Principal,
     farmSize: nat64,
     location: text,
     rating: nat64,
     verified: bool
-});
-
-const EmploymentContractPayload = Record({
-    farmerId: text,
-    jobOfferId: text,
-    jobDescription: text,
-    jobTerms: text,
-    wages: nat64,
-    duration: text
-});
-
-const WorkerProfilePayload = Record({
-    name: text,
-    contactNo: text,
-    address: text,
-    experience: text,
-});
-
-const JobOfferPayload = Record({
-    farmerId: text,
-    jobTitle: text,
-    jobDescription: text,
-    duration: text
-});
-
-
-
-const FarmerProfilePayload = Record({
-    name: text,
-    contactNo: text,
-    farmSize: nat64,
-    location: text,
 });
 
 const PayStatus = Variant({
@@ -91,16 +54,13 @@ const PayStatus = Variant({
     Completed: text
 });
 
-
-
-// Stay with implementing Payment for Job Payment 
 const JobPay = Record({
     ContractId: text,
     price: nat64,
     status: PayStatus,
-    farmer:Principal,
+    farmer: Principal,
     worker: Principal,
-    paid_at_block: Opt(nat64),
+    paid_at_block: Option(nat64),
     memo: nat64
 });
 
@@ -111,27 +71,23 @@ const Message = Variant({
     PaymentCompleted: text
 });
 
-
-
-const contractStorage = StableBTreeMap(0,text, EmploymentContract)
-const workerStorage =  StableBTreeMap(1,text, WorkerProfile)
-const jobStorage  = StableBTreeMap(2,text, JobOffer)
-const farmerStorage = StableBTreeMap(3,text, FarmerProfile)
-const pendingJobPay = StableBTreeMap(4,nat64, JobPay)
+// Initialize storage for different data models
+const contractStorage = StableBTreeMap(0, text, EmploymentContract);
+const workerStorage = StableBTreeMap(1, text, WorkerProfile);
+const jobStorage = StableBTreeMap(2, text, JobOffer);
+const farmerStorage = StableBTreeMap(3, text, FarmerProfile);
+const pendingJobPay = StableBTreeMap(4, nat64, JobPay);
 const persistedJobPay = StableBTreeMap(5, Principal, JobPay);
 
+// Define timeout period for reservation
+const TIMEOUT_PERIOD: Duration = 9600n; // in seconds
 
-const TIMEOUT_PERIOD = 9600n; // reservation period in seconds
+// Initialize Ledger canister
+const ledgerCanister = Ledger(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"));
 
-
-/* 
-    initialization of the Ledger canister. The principal text value is hardcoded because 
-    we set it in the `dfx.json`
-*/
-const icpCanister = Ledger(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"));
-
+// Define the Canister
 export default Canister({
-    //create a contract
+    // Function to create a contract
     createContract: update([EmploymentContractPayload], Result(EmploymentContract, Message), (payload) => {
         const contractId = uuidv4();
         const contract = { ...payload, contractId, workerId: None, status: "PENDING" };
@@ -139,7 +95,7 @@ export default Canister({
         return Ok(contract);
     }),
 
-    //create a worker profile
+    // Function to create a worker profile
     createWorkerProfile: update([WorkerProfilePayload], Result(WorkerProfile, Message), (payload) => {
         const workerId = uuidv4();
         const worker = { ...payload, workerId, owner: ic.caller(), skills: [], references: [], earnedPoints: 0n, verified: false };
@@ -147,7 +103,7 @@ export default Canister({
         return Ok(worker);
     }),
 
-    //create a job offer
+    // Function to create a job offer
     createJobOffer: update([JobOfferPayload], Result(JobOffer, Message), (payload) => {
         const jobOfferId = uuidv4();
         const jobOffer = { ...payload, jobOfferId, status: "PENDING" };
@@ -155,49 +111,30 @@ export default Canister({
         return Ok(jobOffer);
     }),
 
-  
-
-    //create a farmer profile
+    // Function to create a farmer profile
     createFarmerProfile: update([FarmerProfilePayload], Result(FarmerProfile, Message), (payload) => {
         const farmerId = uuidv4();
-        const farmer = { ...payload, farmerId, owner: ic.caller(),  rating: 0n, verified: false };
+        const farmer = { ...payload, farmerId, owner: ic.caller(), rating: 0n, verified: false };
         farmerStorage.insert(farmerId, farmer);
         return Ok(farmer);
     }),
 
-    //get a contract by id
+    // Function to get a contract by id
     getContract: query([text], Result(EmploymentContract, Message), (contractId) => {
         const contractOpt = contractStorage.get(contractId);
-        if ("None" in contractOpt) {
-            return Err({ NotFound: `contract with id=${contractId} not found` });
-        }
-        return Ok(contractOpt.Some);
+        return contractOpt.match({
+            Some: (contract) => Ok(contract),
+            None: () => Err({ NotFound: `Contract with id=${contractId} not found` })
+        });
     }),
 
-    // get Contract by Worker Id
-    getContractAssignedToWorker: query([text], Result(EmploymentContract, Message), (workerId) => {
-        const contractOpt = contractStorage
-            .values()
-            .filter((contract) => {
-                return contract.workerId.Some === workerId;
-            });
-        if (contractOpt.length === 0) {
-            return Err({
-                NotFound: `contract with workerId=${workerId} not found`,
-            });
-        }
-        return Ok(contractOpt[0]);
-    }
-    ),
-
-
-    //get a worker profile by id
+    // Function to get a worker profile by id
     getWorkerProfile: query([text], Result(WorkerProfile, Message), (workerId) => {
         const workerOpt = workerStorage.get(workerId);
-        if ("None" in workerOpt) {
-            return Err({ NotFound: `worker with id=${workerId} not found` });
-        }
-        return Ok(workerOpt.Some);
+        return workerOpt.match({
+            Some: (worker) => Ok(worker),
+            None: () => Err({ NotFound: `Worker with id=${workerId} not found` })
+        });
     }),
 
  
