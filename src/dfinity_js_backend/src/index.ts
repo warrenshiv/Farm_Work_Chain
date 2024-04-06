@@ -388,104 +388,107 @@ export default Canister({
 
 
 
-
-    //create a reserve
+    // Function to create a reserve job payment
     createReserveJobPay: update([text], Result(JobPay, Message), (contractId) => {
         const contractOpt = contractStorage.get(contractId);
-        if ("None" in contractOpt) {
-            return Err({ NotFound: `cannot reserve job: contract with id=${contractId} not found` });
+        if (contractOpt.isNone()) {
+            return Err({ NotFound: `Contract with id=${contractId} not found` });
         }
-        const contract = contractOpt.Some;
 
+        const contract = contractOpt.unwrap();
+
+        if (contract.workerId.isNone()) {
+            return Err({ NotFound: `Worker is not assigned to the contract with id=${contractId}` });
+        }
+
+        const workerId = contract.workerId.unwrap();
+        const workerOpt = workerStorage.get(workerId);
+
+        if (workerOpt.isNone()) {
+            return Err({ NotFound: `Worker with id=${workerId} not found` });
+        }
+
+        const worker = workerOpt.unwrap();
         const farmerOpt = farmerStorage.get(contract.farmerId);
 
-        if ("None" in farmerOpt) {
-            return Err({ NotFound: `cannot reserve job: farmer with id=${contract.farmerId} not found` });
-        }
-        const farmer = farmerOpt.Some;
-
-        // workerId is an optional field in the contract record so we need to check if it is present
-        if (contract.workerId.None === null) {
-            return Err({ NotFound: `cannot reserve job: worker not assigned to the contract with id=${contractId}` });
+        if (farmerOpt.isNone()) {
+            return Err({ NotFound: `Farmer with id=${contract.farmerId} not found` });
         }
 
-        const workerOpt = workerStorage.get(contract.workerId.Some);
-        if ("None" in workerOpt) {
-            return Err({ NotFound: `cannot reserve job: worker with id=${contract.workerId.Some} not found` });
-        }
-        const worker = workerOpt.Some;
-        
-        
+        const farmer = farmerOpt.unwrap();
+        const memo = generateCorrelationId(contractId);
 
-        const jobPay = {
+        const jobPay: JobPay = {
             ContractId: contract.contractId,
             price: contract.wages,
             status: { PaymentPending: "PAYMENT_PENDING" },
             farmer: farmer.owner,
             worker: worker.owner,
             paid_at_block: None,
-            memo: generateCorrelationId(contractId)
+            memo: memo
         };
-        pendingJobPay.insert(jobPay.memo, jobPay);
-        discardByTimeout(jobPay.memo, TIMEOUT_PERIOD);
-        return Ok(jobPay);
-    }
-    ),
 
-    // Complete a Job Pay to Worker
-    completeJobPay: update([Principal,text,nat64, nat64, nat64], Result(JobPay, Message), async (worker,contractId,payPrice, block, memo) => {
-        const paymentVerified = await verifyPaymentInternal(worker,payPrice, block, memo);
+        pendingJobPay.insert(memo, jobPay);
+        discardByTimeout(memo, TIMEOUT_PERIOD);
+        return Ok(jobPay);
+    }),
+
+    // Function to complete a job payment to worker
+    completeJobPay: update([Principal, text, nat64, nat64, nat64], Result(JobPay, Message), async (worker, contractId, payPrice, block, memo) => {
+        const paymentVerified = await verifyPaymentInternal(worker, payPrice, block, memo);
+
         if (!paymentVerified) {
-            return Err({ NotFound: `cannot complete the Job Pay: cannot verify the payment, memo=${memo}` });
+            return Err({ PaymentFailed: `Failed to verify payment for contract with id=${contractId}, memo=${memo}` });
         }
-        const pendingJobPayOpt = pendingJobPay.remove(memo);
-        if ("None" in pendingJobPayOpt) {
-            return Err({ NotFound: `cannot complete the Job Pay: there is no pending Job Pay with id=${contractId}` });
+
+        const pendingJobPayOpt = pendingJobPay.get(memo);
+
+        if (pendingJobPayOpt.isNone()) {
+            return Err({ NotFound: `No pending job payment found with memo=${memo}` });
         }
-        const jobPay = pendingJobPayOpt.Some;
-        const updatedReserve = { ...jobPay, status: { Completed: "COMPLETED" }, paid_at_block: Some(block) };
+
+        const jobPay = pendingJobPayOpt.unwrap();
+        const updatedReserve: JobPay = { ...jobPay, status: { Completed: "COMPLETED" }, paid_at_block: Some(block) };
 
         const contractOpt = contractStorage.get(contractId);
-        if ("None" in contractOpt){
-            throw Error(`Contract with id=${contractId} not found`)
+
+        if (contractOpt.isNone()) {
+            return Err({ NotFound: `Contract with id=${contractId} not found` });
         }
 
-        const contract = contractOpt.Some;
-        console.log("first contract",contract)
+        const contract = contractOpt.unwrap();
         contract.status = "COMPLETED";
 
-        console.log("second contract",contract)
-
-        // console.log("Contract",contract)
-        // // Update the worker Earned Points
-
-        // const workerOpt = workerStorage.get(contract.workerId.Some);
-        // console.log("workOpt",workerOpt)
-        // if ("None" in workerOpt){
-        //     throw Error(`Worker with id=${contract.workerId.Some} not found`)
-        // }
-        // const workerUpdate = workerOpt.Some;
-        // console.log("earned Points",  workerUpdate.earnedPoints)
-
-        // workerUpdate.earnedPoints += BigInt(10);
-        // workerStorage.insert(workerUpdate.workerId,worker)
-        contractStorage.insert(contract.contractId,contract)
+        contractStorage.insert(contract.contractId, contract);
         persistedJobPay.insert(ic.caller(), updatedReserve);
         return Ok(updatedReserve);
-    }
-    ),
-
-    
-     /*
-        another example of a canister-to-canister communication
-        here we call the `query_blocks` function on the ledger canister
-        to get a single block with the given number `start`.
-        The `length` parameter is set to 1 to limit the return amount of blocks.
-        In this function we verify all the details about the transaction to make sure that we can mark the order as completed
-    */
-    verifyPayment: query([Principal, nat64, nat64, nat64], bool, async (receiver, amount, block, memo) => {
-        return await verifyPaymentInternal(receiver, amount, block, memo);
     }),
+
+    // Function to verify payment
+    verifyPayment: query([Principal, nat64, nat64, nat64], bool, async (receiver, amount, block, memo) => {
+        const blockData = await ledgerCanister.query_blocks({
+            args: [{ start: block, length: 1n }]
+        });
+
+        const tx = blockData.blocks.find((block) => {
+            if (block.transaction.operation.isNone()) {
+                return false;
+            }
+
+            const operation = block.transaction.operation.unwrap();
+            const senderAddress = hexAddressFromPrincipal(ic.caller(), 0);
+            const receiverAddress = hexAddressFromPrincipal(receiver, 0);
+
+            return block.transaction.memo === memo &&
+                operation.Transfer &&
+                hexAddressFromPrincipal(operation.Transfer.from, 0) === senderAddress &&
+                hexAddressFromPrincipal(operation.Transfer.to, 0) === receiverAddress &&
+                operation.Transfer.amount.e8s === amount;
+        });
+
+        return tx ? true : false;
+    })
+
 
     /*
         a helper function to get address from the principal
