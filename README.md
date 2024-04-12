@@ -2,7 +2,7 @@
 
 ## Overview
 
-This documentation provides a comprehensive overview of a smart contract designed for the agriculture sector, enabling interactions between farmers and workers through profiles, job offers, employment contracts, and job payments.
+This documentation provides a comprehensive overview of a smart contract designed for the agriculture sector, enabling interactions between farmers and workers through profiles, job offers, employment contracts, job payments and also payment payment conflicts.
 
 
 ## Things to be explained in the course:
