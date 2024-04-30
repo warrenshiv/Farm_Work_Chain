@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Container, Button, Form } from "react-bootstrap";
-import { createManagerProfile } from "../../utils/farmWorkChain";
+import { createFarmManagerProfile } from "../../utils/farmWorkChain";
 
-const CreateManagerProfile = ({fetchManager}) => {
+const CreateFarmManagerProfile = ({fetchManager}) => {
     const [name, setName] = useState("");
     const [contactNo, setContactNo] = useState("");
-    const [address, setAddress] = useState("");
+    const [location, setlocation] = useState("");
     const [experience, setExperience] = useState("");
 
     const handlePublishProfile = async () => {
@@ -13,10 +13,10 @@ const CreateManagerProfile = ({fetchManager}) => {
             const manager = {
                 name,
                 contactNo,
-                address,
+                location,
                 experience
             }
-            await createManagerProfile(manager).then((res) => {
+            await createFarmManagerProfile(manager).then((res) => {
                 console.log(res);
                 fetchManager();
             } );
@@ -50,12 +50,12 @@ const CreateManagerProfile = ({fetchManager}) => {
                 />
             </Form.Group>
             <Form.Group>
-                <Form.Label>Address</Form.Label>
+                <Form.Label>location</Form.Label>
                 <Form.Control
                 type="text"
-                placeholder="Enter your address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter your location"
+                value={location}
+                onChange={(e) => setlocation(e.target.value)}
                 />
             </Form.Group>
             <Form.Group>
@@ -74,4 +74,4 @@ const CreateManagerProfile = ({fetchManager}) => {
   )
 }
 
-export default CreateManagerProfile;
+export default CreateFarmManagerProfile;

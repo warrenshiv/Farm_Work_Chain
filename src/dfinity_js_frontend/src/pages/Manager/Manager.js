@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { createJobOffer, getManagerByOwner } from "../../utils/farmWorkChain";
+import { createJobOffer, getFarmManagerByOwner } from "../../utils/farmWorkChain";
 import { Notification } from "../../components/utils/Notifications";
 import Wallet from "../../components/Wallet";
 import ManagerDashboard from "./ManagerDashboard";
@@ -19,7 +19,7 @@ const Manager = () => {
     try {
       setLoading(true);
       setManager(
-        await getManagerByOwner().then(async (res) => {
+        await getFarmManagerByOwner().then(async (res) => {
           console.log(res);
           return res.Ok;
         })
