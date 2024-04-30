@@ -41,6 +41,14 @@ const JobOffer = Record({
     status: text
 });
 
+// FarmManager Profile
+const FarmManagerProfile = Record({
+    farmManagerId: text,
+    name: text,
+    contactNo : text,
+    owner: Principal,
+    location: text,
+});
 
 
 const FarmerProfile = Record({
@@ -77,7 +85,12 @@ const JobOfferPayload = Record({
     duration: text
 });
 
-
+// FarmManager Profile Payload
+const FarmManagerProfilePayload = Record({
+    name: text,
+    contactNo: text,
+    location: text,
+});
 
 const FarmerProfilePayload = Record({
     name: text,
@@ -119,6 +132,7 @@ const jobStorage  = StableBTreeMap(2,text, JobOffer)
 const farmerStorage = StableBTreeMap(3,text, FarmerProfile)
 const pendingJobPay = StableBTreeMap(4,nat64, JobPay)
 const persistedJobPay = StableBTreeMap(5, Principal, JobPay);
+const farmManagerStorage = StableBTreeMap(6,text,FarmManagerProfile)
 
 
 const TIMEOUT_PERIOD = 9600n; // reservation period in seconds
@@ -138,6 +152,15 @@ export default Canister({
         contractStorage.insert(contractId, contract);
         return Ok(contract);
     }),
+    
+    // create a farm manager profile
+    createFarmManagerProfile: update([FarmManagerProfilePayload], Result(FarmManagerProfile, Message), (payload) => {
+        const farmManagerId = uuidv4();
+        const farmManager = { ...payload, farmManagerId, owner: ic.caller() };
+        farmManagerStorage.insert(farmManagerId, farmManager);
+        return Ok(farmManager);
+    }),
+    
 
     //create a worker profile
     createWorkerProfile: update([WorkerProfilePayload], Result(WorkerProfile, Message), (payload) => {
@@ -154,9 +177,7 @@ export default Canister({
         jobStorage.insert(jobOfferId, jobOffer);
         return Ok(jobOffer);
     }),
-
-  
-
+    
     //create a farmer profile
     createFarmerProfile: update([FarmerProfilePayload], Result(FarmerProfile, Message), (payload) => {
         const farmerId = uuidv4();
@@ -220,6 +241,25 @@ export default Canister({
         }
     ),
 
+    // get FarmManager by owner principal using filter
+    getFarmManagerByOwner: query(
+        [],
+        Result(FarmManagerProfile, Message),
+        () => {
+            const farmManagerOpt = farmManagerStorage
+                .values()
+                .filter((farmManager) => {
+                    return farmManager.owner.toText() === ic.caller().toText();
+                });
+            if (farmManagerOpt.length === 0) {
+                return Err({
+                    NotFound: `farmManager with owner=${ic.caller()} not found`,
+                });
+            }
+            return Ok(farmManagerOpt[0]);
+        }
+    ),
+    
     // get Farmer by owner principal using filter
     getFarmerByOwner: query(
         [],

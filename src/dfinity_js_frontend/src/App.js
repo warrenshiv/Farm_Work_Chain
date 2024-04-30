@@ -10,6 +10,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home/Home";
 import Worker from "./pages/Worker/Worker";
 import Farmer from "./pages/Farmer/Farmer";
+import Manager from "./pages/Manager/Manager";
 
 
 
@@ -23,6 +24,7 @@ const App = function AppWrapper() {
           <Route path="/" element={<Home />} />
           <Route path="/worker" element={<Worker />} />
           <Route path="/farmer" element={<Farmer />} />
+          <Route path="/manager" element={<Manager />} />
         </Routes>
       </Router>
  

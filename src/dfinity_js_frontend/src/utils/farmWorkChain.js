@@ -12,6 +12,11 @@ export async function createWorkerProfile(profile) {
   return window.canister.farmWorkChain.createWorkerProfile(profile);
 }
 
+// createFarmManagerProfile
+export async function createFarmManagerProfile(profile) {
+  return window.canister.farmWorkChain.createFarmManagerProfile(profile);
+}
+
 // createJobOffer
 export async function createJobOffer(offer) {
   return window.canister.farmWorkChain.createJobOffer(offer);
@@ -137,6 +142,11 @@ export async function verifyWorker(workerId) {
 // getWorkerByOwner
 export async function getWorkerByOwner() {
   return window.canister.farmWorkChain.getWorkerByOwner();
+}
+
+// getFarmManagerByOwner
+export async function getFarmManagerByOwner() {
+  return window.canister.farmWorkChain.getFarmManagerByOwner();
 }
 
 // getFarmerByOwner

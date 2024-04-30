@@ -633,11 +633,48 @@ export default function HomeJobListingPage() {
                 >
                   An employee is a hired individual who works for a company.
                 </Text>
-                <Link to="/farmer?canisterId=br5f7-7uaaa-aaaaa-qaaca-cai" className="no-underline">
+                <Link
+                  to="/farmer?canisterId=br5f7-7uaaa-aaaaa-qaaca-cai"
+                  className="no-underline"
+                >
                   <Button
                     color="white_A700"
                     size="lg"
                     className="!rounded-[12px] border border-solid border-cyan-500"
+                  >
+                    <Img src={Images.img_arrow_right} alt="Right Arrow" />
+                  </Button>
+                </Link>
+              </div>
+
+              {/* <!-- FarmManager Card --> */}
+              <div className="flex flex-col items-center rounded-lg bg-light_blue-50 p-[1px] sm:p-5">
+                <Img
+                  src={Images.img_image_62}
+                  alt="Farm Manager Icon"
+                  className="h-[65px] w-[65px] rounded-full"
+                />
+                <Heading
+                  size="xl"
+                  as="h3"
+                  className="mt-[18px] text-center !font-epilogue"
+                >
+                  Farm Manager
+                </Heading>
+                <Text
+                  as="p"
+                  className="mb-[15px] mt-[9px] text-center !text-blue_gray-900"
+                >
+                  A person who manages the operations of a farm.
+                </Text>
+                <Link
+                  to="/manager?canisterId=br5f7-7uaaa-aaaaa-qaaca-cai"
+                  className="no-underline"
+                >
+                  <Button
+                    color="white_A700"
+                    size="lg"
+                    className="!rounded-[18px] border border-solid border-cyan-500"
                   >
                     <Img src={Images.img_arrow_right} alt="Right Arrow" />
                   </Button>
@@ -664,7 +701,10 @@ export default function HomeJobListingPage() {
                 >
                   Independent service provider with a written contract.
                 </Text>
-                <Link to="/worker?canisterId=br5f7-7uaaa-aaaaa-qaaca-cai" className="no-underline">
+                <Link
+                  to="/worker?canisterId=br5f7-7uaaa-aaaaa-qaaca-cai"
+                  className="no-underline"
+                >
                   <Button
                     color="white_A700"
                     size="lg"
